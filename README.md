@@ -1,4 +1,3 @@
-# *Dig*The***Treasure***-****2d****
-
-      DigTheTreasure
+# *Dig*The***Treasure***-****2d**** 
+                  DigTheTreasure
    Under construction.
