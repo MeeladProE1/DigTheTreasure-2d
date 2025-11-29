@@ -1,12 +1,1342 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>DigTheTreasure-2d</title>
-  </head>
-  <body>
-    <div style="position:fixed;left: calc(100% - 300px); top: calc(100% - 300px);background-color: lightgrey;height: 200px; width: 400px;">
-      <h1>Under construction</h1>
-      <p><i>Dig</i>The<em>Treasire</em> Under Construction</p>
+<head>
+    <title>Deep Dig Canvas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* LEFT: Canvas Game Area */
+        #game-container {
+            flex: 2;
+            position: relative;
+            background-color: #000;
+            overflow: hidden;
+            cursor: crosshair;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Overlays */
+        #mode-indicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(231, 76, 60, 0.9);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: none;
+            pointer-events: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        #house-ui {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 14px;
+            display: none;
+            pointer-events: none;
+            text-align: center;
+        }
+        
+        /* NEW CUSTOM MODAL */
+        #custom-modal {
+            display: none;
+            position: fixed;
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-box {
+            background: #2c3e50;
+            padding: 25px;
+            border-radius: 10px;
+            border: 2px solid #f1c40f;
+            text-align: center;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .modal-title { font-size: 20px; font-weight: bold; color: #f1c40f; margin-bottom: 10px; }
+        .modal-text { margin-bottom: 20px; line-height: 1.5; color: #ecf0f1; }
+        
+        .modal-btn-container {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        /* RIGHT: Store UI */
+        #ui-panel {
+            flex: 1;
+            min-width: 340px;
+            max-width: 420px;
+            background-color: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            border-left: 4px solid #1a1a1a;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.5);
+        }
+
+        .header {
+            padding: 20px;
+            background-color: #34495e;
+            text-align: center;
+            border-bottom: 2px solid #1abc9c;
+            position: relative;
+        }
+
+        .toggle-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #9b59b6;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .toggle-btn:hover { background: #8e44ad; }
+
+        /* New Hover Info Style */
+        #ui-hover-info {
+            font-size: 14px;
+            margin-top: 8px;
+            color: #ecf0f1;
+            height: 20px;
+            font-weight: bold;
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+            line-height: 20px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            padding: 15px;
+            background: rgba(0,0,0,0.2);
+            font-size: 14px;
+        }
+
+        .scroll-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        h2 { margin-top: 0; font-size: 18px; border-bottom: 1px solid #7f8c8d; padding-bottom: 5px; color: #1abc9c; }
+
+        .btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .btn:hover { background: #2ecc71; transform: translateX(2px); }
+        .btn:active { transform: scale(0.98); }
+        .btn.disabled { opacity: 0.5; cursor: not-allowed; background: #7f8c8d; }
+        
+        .btn-heal { background: #e74c3c; }
+        .btn-heal:hover { background: #ff6b6b; }
+        .btn-explo { background: #e67e22; }
+        .btn-explo:hover { background: #d35400; }
+        .btn-build { background: #3498db; }
+        .btn-build:hover { background: #2980b9; }
+        .btn-smelt { background: #e67e22; color: #fff; }
+        .btn-smelt:hover { background: #d35400; }
+        .btn-cancel { background: #c0392b; justify-content: center; }
+        .btn-confirm { background: #27ae60; justify-content: center; }
+
+        .btn-detonate { 
+            background: #c0392b; 
+            text-align: center; 
+            font-weight: bold; 
+            font-size: 18px;
+            justify-content: center;
+            margin-top: 10px;
+            border: 2px solid #e74c3c;
+            animation: pulse 2s infinite;
+        }
+        .btn-detonate:hover { background: #e74c3c; }
+
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(192, 57, 43, 0); } 100% { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0); } }
+
+        .log {
+            height: 100px;
+            background: #000;
+            color: #ccc;
+            font-family: monospace;
+            padding: 10px;
+            font-size: 12px;
+            overflow-y: auto;
+            border-top: 2px solid #555;
+        }
+        
+        .key-hint {
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 3px;
+            padding: 1px 5px;
+            font-size: 10px;
+            color: #ddd;
+            margin-right: 5px;
+            font-family: monospace;
+        }
+
+        /* Material Item Styling */
+        .mat-item {
+            display: inline-block;
+            padding: 5px 10px;
+            margin: 2px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        .mat-item:hover { background: rgba(255,255,255,0.1); }
+        .mat-item.selected { border: 1px solid #f1c40f; background: rgba(241, 196, 15, 0.2); }
+
+        /* Furnace Styling */
+        #furnace-panel {
+            background: rgba(0,0,0,0.3);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #e67e22;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #333;
+            margin-top: 5px;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #e67e22;
+            transition: width 0.1s linear;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- CUSTOM CONFIRM MODAL -->
+    <div id="custom-modal">
+        <div class="modal-box">
+            <div class="modal-title">Confirm Sale</div>
+            <div id="modal-msg" class="modal-text">Are you sure?</div>
+            <div class="modal-btn-container">
+                <button class="btn btn-cancel" style="width: 100px" onclick="game.closeModal()">Cancel</button>
+                <button class="btn btn-confirm" style="width: 100px" onclick="game.confirmSell()">Sell</button>
+            </div>
+        </div>
     </div>
-  </body>
+
+    <!-- LEFT SIDE: CANVAS -->
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="mode-indicator">PLACEMENT MODE: CLICK TO PLACE</div>
+        <div id="house-ui">
+            🏠 <b>BUILDING MODE</b><br>
+            Select a material from Inventory.<br>
+            Click sky to build. Right-click to erase.
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE: HTML UI -->
+    <div id="ui-panel">
+        <div class="header">
+            <h1 style="margin:0; font-size:24px;">Deep Dig</h1>
+            <button class="toggle-btn" onclick="game.toggleMode()">
+                <span class="key-hint">H</span> Go Home
+            </button>
+            <div style="margin-top:5px; color: #f1c40f; font-size: 20px;">
+                $<span id="ui-gold">0</span>
+            </div>
+            <div style="font-size: 12px; margin-top: 5px;">
+                Depth: <span id="ui-depth">0</span>m | 🔥 Gems: <span id="ui-gems" style="color:#e67e22; font-weight:bold;">0</span>
+            </div>
+            <!-- HOVER INFO BOX -->
+            <div id="ui-hover-info">Block: -</div>
+        </div>
+
+        <div class="stats-grid">
+            <div>❤️ HP: <span id="ui-hp">100</span></div>
+            <div>⛏️ Pick: Lvl <span id="ui-pick">1</span></div>
+            <div>⚔️ Sword: Lvl <span id="ui-sword">1</span></div>
+            <div>🛡️ Armor: Lvl <span id="ui-armor">1</span></div>
+        </div>
+
+        <div class="scroll-area">
+            
+            <div id="shop-mine">
+                <!-- Furnace -->
+                <h2>🔥 The Furnace</h2>
+                <div id="furnace-panel">
+                    <div id="furnace-status" style="font-size:12px; margin-bottom:5px;">Idle. Burn 10 ores for 1 Gem.</div>
+                    <button class="btn btn-smelt" id="btn-burn-iron" onclick="game.startSmelt('iron')">
+                        Burn 10 Iron (30s)
+                    </button>
+                    <button class="btn btn-smelt" id="btn-burn-gold" onclick="game.startSmelt('gold')">
+                        Burn 10 Gold (30s)
+                    </button>
+                    <div class="progress-bar"><div id="furnace-progress" class="progress-fill"></div></div>
+                </div>
+
+                <h2>💎 Fire Gem Shop</h2>
+                <button class="btn" style="background:#5D4037;" onclick="game.buyArtifact('sharpness')">
+                    <span>🔥 Sharpness Stone</span> <span class="cost">5 Gems</span>
+                </button>
+                <button class="btn" style="background:#455A64;" onclick="game.buyArtifact('hardhat')">
+                    <span>⛑️ Hard Hat (+HP)</span> <span class="cost">5 Gems</span>
+                </button>
+                <button class="btn" style="background:#1B5E20;" onclick="game.buyArtifact('boots')">
+                    <span>⚡ Speed Boots</span> <span class="cost">10 Gems</span>
+                </button>
+
+                <h2>💣 Explosives</h2>
+                <button class="btn btn-explo" onclick="game.startPlacement('bomb', 200)">
+                    <span><span class="key-hint">B</span>Buy Bomb</span> <span class="cost">$200</span>
+                </button>
+                <button class="btn btn-explo" onclick="game.startPlacement('mine', 500)">
+                    <span><span class="key-hint">N</span>Buy Mega Mine</span> <span class="cost">$500</span>
+                </button>
+                <button class="btn btn-detonate" onclick="game.detonateAll()">
+                    <span class="key-hint" style="position: absolute; left: 10px; background: #a93226;">X</span>
+                    💥 DETONATE ALL 💥
+                </button>
+            </div>
+
+            <div id="shop-build" style="display:none; margin-bottom: 20px;">
+                <h2>🏗️ Construction Shop</h2>
+                <button class="btn btn-build" onclick="game.buyMaterial('wood', 10, 20)">
+                    <span>Buy 20 Wood</span> <span class="cost">$10</span>
+                </button>
+                <button class="btn btn-build" onclick="game.buyMaterial('brick', 50, 20)">
+                    <span>Buy 20 Bricks</span> <span class="cost">$50</span>
+                </button>
+                <button class="btn btn-build" onclick="game.buyMaterial('glass', 100, 20)">
+                    <span>Buy 20 Glass</span> <span class="cost">$100</span>
+                </button>
+            </div>
+
+            <br>
+            <h2>🎒 Inventory</h2>
+            <div id="materials-list" style="font-size:12px; margin-bottom: 10px; color:#bdc3c7;">
+                <!-- Generated JS -->
+            </div>
+            
+            <button class="btn" style="background:#f39c12; justify-content:center;" onclick="game.requestSell()">
+                <span class="key-hint" style="position: absolute; left: 10px; background: #d68910;">C</span>
+                💰 Sell Ores
+            </button>
+
+            <br>
+            <h2>🔨 Upgrades</h2>
+            <button class="btn" onclick="game.upgrade('pick')">
+                <span><span class="key-hint">1</span>Upgrade Pickaxe</span> <span class="cost" id="cost-pick">50</span>
+            </button>
+            <button class="btn" onclick="game.upgrade('sword')">
+                <span><span class="key-hint">2</span>Upgrade Sword</span> <span class="cost" id="cost-sword">100</span>
+            </button>
+            <button class="btn" onclick="game.upgrade('armor')">
+                <span><span class="key-hint">3</span>Upgrade Armor</span> <span class="cost" id="cost-armor">150</span>
+            </button>
+            <button class="btn btn-heal" onclick="game.buyPotion()">
+                <span><span class="key-hint">4</span>Heal Potion</span> <span class="cost">$50</span>
+            </button>
+        </div>
+
+        <div class="log" id="game-log">
+            > Welcome.<br>
+            > Burn ores in the Furnace!<br>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME CONFIGURATION ---
+        const CONFIG = {
+            cols: 7,
+            houseCols: 14,
+            blockSize: 67, 
+            baseBlockHP: 3,
+            baseEnemyHP: 1,
+            VIEWPORT_GRID_SIZE: 3, // New: only show a 3x3 grid centered on cursor
+            colors: {
+                bg: "#000000",
+                sky: "#87CEEB",
+                grass: "#2ecc71",
+                dirt: "#5d4037",
+                stone: "#7f8c8d",
+                iron: "#95a5a6",
+                gold: "#f1c40f",
+                diamond: "#3498db",
+                obsidian: "#2c3e50",
+                mithril: "#2ecc71",
+                infinity: "#0a2032", 
+                bedrock: "#111",
+                wood: "#8B4513",
+                brick: "#A52A2A",
+                glass: "rgba(174, 214, 241, 0.8)",
+                unseen: "#000000", // Pure black for areas outside the 3x3 view
+                obstructed: "#333333" // Dark gray for hidden contents within the 3x3 view
+            }
+        };
+
+        const MATERIALS = [
+            { id: 'dirt', name: 'Dirt', val: 1, color: CONFIG.colors.dirt, hard: 1, type: 'ore' },
+            { id: 'stone', name: 'Stone', val: 3, color: CONFIG.colors.stone, hard: 2, type: 'ore' },
+            { id: 'iron', name: 'Iron', val: 10, color: CONFIG.colors.iron, hard: 4, type: 'ore' },
+            { id: 'gold', name: 'Gold', val: 25, color: CONFIG.colors.gold, hard: 6, type: 'ore' },
+            { id: 'diamond', name: 'Diamond', val: 75, color: CONFIG.colors.diamond, hard: 10, type: 'ore' },
+            { id: 'obsidian', name: 'Obsidian', val: 200, color: CONFIG.colors.obsidian, hard: 15, type: 'ore' },
+            { id: 'mithril', name: 'Mithril', val: 500, color: CONFIG.colors.mithril, hard: 25, type: 'ore' },
+            { id: 'infinity MeeladPro', name: 'MeeladPro Infinity', val: 10000, color: CONFIG.colors.infinity, hard: 30, type: 'ore' },
+            
+            { id: 'wood', name: 'Wood', val: 0, color: CONFIG.colors.wood, hard: 1, type: 'build' },
+            { id: 'brick', name: 'Brick', val: 0, color: CONFIG.colors.brick, hard: 1, type: 'build' },
+            { id: 'glass', name: 'Glass', val: 0, color: CONFIG.colors.glass, hard: 1, type: 'build' }
+        ];
+        
+        // Enemy definitions for roles and icons
+        const ENEMY_DEFS = [
+            { icon: "💀", role: "melee" }, // Skeleton
+            { icon: "👹", role: "melee" }, // Golem
+            { icon: "🦇", role: "ranged" }, // Bat
+            { icon: "👻", role: "ranged" }  // Ghost
+        ];
+
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // State
+                this.mode = 'mine'; 
+                this.gold = 0;
+                this.fireGems = 0;
+                this.maxHp = 100;
+                this.hp = 100;
+                this.inventory = { wood: 50, brick: 0, glass: 0, dirt: 10, iron: 0, gold: 0 }; 
+                this.depth = 0;
+                this.levels = { pick: 1, sword: 1, armor: 1 };
+                this.costs = { pick: 50, sword: 100, armor: 150 };
+                this.artifacts = { sharpness: 0, hardhat: 0, boots: 0 };
+                
+                this.maxDepthUnlocked = 0;
+                this.pendingSaleTotal = 0;
+
+                this.smeltState = { active: false, start: 0, duration: 30000, type: '' };
+
+                this.selectedMaterial = 'dirt';
+                this.houseBlocks = []; 
+
+                this.blocks = []; 
+                this.explosives = []; 
+                this.projectiles = []; // NEW: Array for active projectiles
+                this.rowsGenerated = 0;
+                
+                this.cursor = { gridX: 3, gridY: 0 };
+                this.placementMode = null; 
+                this.placementCost = 0;
+
+                // Bind methods to 'this' to prevent context loss in async calls and event handlers
+                this.enemyTurn = this.enemyTurn.bind(this);
+                this.loop = this.loop.bind(this);
+                this.handleKey = this.handleKey.bind(this);
+                this.handleMouse = this.handleMouse.bind(this);
+                this.handleHover = this.handleHover.bind(this);
+                this.handleRightClick = this.handleRightClick.bind(this);
+                this.attemptInteraction = this.attemptInteraction.bind(this); 
+
+                // Listeners
+                this.canvas.addEventListener('mousedown', this.handleMouse);
+                this.canvas.addEventListener('mousemove', this.handleHover); 
+                this.canvas.addEventListener('contextmenu', this.handleRightClick);
+                this.canvas.addEventListener('touchstart', (e) => {
+                    e.preventDefault(); 
+                    this.handleMouse(e.touches[0]);
+                }, {passive: false});
+
+                window.addEventListener('keydown', this.handleKey);
+
+                // Init
+                this.resize();
+                window.addEventListener('resize', () => this.resize());
+                
+                this.initWorld();
+                this.loop();
+                setInterval(this.enemyTurn, 1500); // Enemy attack timer
+            }
+
+            resize() {
+                const container = document.getElementById('game-container');
+                this.canvas.width = container.clientWidth;
+                this.canvas.height = container.clientHeight;
+                
+                const size = Math.min(this.canvas.width, this.canvas.height);
+                this.blockRenderSize = size / CONFIG.VIEWPORT_GRID_SIZE; 
+            }
+
+            initWorld() {
+                this.maxDepthUnlocked = 0;
+                for(let i=0; i<8; i++) this.generateRow();
+                for(let x=0; x<CONFIG.houseCols; x++) {
+                    this.houseBlocks.push({x: x, y: 10, matId: 'grass'});
+                }
+            }
+
+            generateRow() {
+                const yIndex = this.rowsGenerated;
+                for(let x=0; x<CONFIG.cols; x++) {
+                    let matIndex = 0;
+                    const r = Math.random();
+                    const depthFactor = Math.min(yIndex / 100, 1);
+
+                    if(yIndex > 0) {
+                        if (r < 0.6 - (depthFactor * 0.4)) matIndex = 0;
+                        else if (r < 0.85 - (depthFactor * 0.2)) matIndex = 1;
+                        else if (r < 0.92) matIndex = Math.min(2 + Math.floor(yIndex/20), 7);
+                        else matIndex = Math.min(3 + Math.floor(yIndex/15), 7);
+                    }
+                    if(matIndex > 7) matIndex = 7;
+                    
+                    const mat = MATERIALS[matIndex];
+                    let block = {
+                        gridX: x,
+                        gridY: yIndex,
+                        mat: mat,
+                        hp: mat.hard * 10,
+                        maxHp: mat.hard * 10,
+                        enemy: null
+                    };
+
+                    if (yIndex > 2 && Math.random() < 0.05 + (yIndex * 0.002)) {
+                        const enemyDef = ENEMY_DEFS[Math.floor(Math.random() * ENEMY_DEFS.length)];
+                        
+                        block.enemy = {
+                            icon: enemyDef.icon,
+                            role: enemyDef.role, // "melee" or "ranged"
+                            hp: CONFIG.baseEnemyHP + (yIndex * 5) * (enemyDef.role === 'melee' ? 1.5 : 1), 
+                            maxHp: CONFIG.baseEnemyHP + (yIndex * 5) * (enemyDef.role === 'melee' ? 1.5 : 1),
+                            dmg: 5 + Math.floor(yIndex / 5) * (enemyDef.role === 'ranged' ? 1.2 : 1) 
+                        };
+                    }
+                    this.blocks.push(block);
+                }
+                this.rowsGenerated++;
+            }
+
+            isAdjacentToAir(x, y) {
+                if (y === 0) return true;
+
+                const neighbors = [
+                    { dx: 0, dy: -1 }, { dx: 0, dy: 1 },  
+                    { dx: -1, dy: 0 }, { dx: 1, dy: 0 }   
+                ];
+
+                for (const neighbor of neighbors) {
+                    const nx = x + neighbor.dx;
+                    const ny = y + neighbor.dy;
+
+                    if (nx >= 0 && nx < CONFIG.cols && ny >= 0 && ny < this.rowsGenerated) {
+                        const neighborBlock = this.blocks.find(b => b.gridX === nx && b.gridY === ny);
+                        if (!neighborBlock) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+            
+            // Checks if a straight (horizontal or vertical) path between two points is clear of solid blocks.
+            hasLineOfSight(x1, y1, x2, y2) {
+                if (x1 !== x2 && y1 !== y2) return false; 
+
+                if (x1 === x2) { // Vertical path
+                    const stepY = y2 > y1 ? 1 : -1;
+                    for (let y = y1 + stepY; y !== y2; y += stepY) {
+                        if (this.blocks.find(b => b.gridX === x1 && b.gridY === y)) return false;
+                    }
+                    return true;
+                } 
+                
+                if (y1 === y2) { // Horizontal path
+                    const stepX = x2 > x1 ? 1 : -1;
+                    for (let x = x1 + stepX; x !== x2; x += stepX) {
+                        if (this.blocks.find(b => b.gridX === x && b.gridY === y1)) return false;
+                    }
+                    return true;
+                }
+                
+                return false; 
+            }
+
+            isBlockVisible(block) {
+                if (block.gridY > this.maxDepthUnlocked) return false;
+
+                const VIEW_RADIUS = (CONFIG.VIEWPORT_GRID_SIZE - 1) / 2;
+                const distanceX = Math.abs(block.gridX - this.cursor.gridX);
+                const distanceY = Math.abs(block.gridY - this.cursor.gridY);
+                
+                return distanceX <= VIEW_RADIUS && distanceY <= VIEW_RADIUS;
+            }
+
+            isBlockAccessible(block) {
+                if (block.gridY > this.maxDepthUnlocked) return false;
+                return this.isAdjacentToAir(block.gridX, block.gridY);
+            }
+
+            // --- COMBAT AND INTERACTION LOGIC ---
+
+            attackEnemy(block) {
+                let dmg = 10 * this.levels.sword;
+                if (this.artifacts.sharpness > 0) dmg *= (1 + (this.artifacts.sharpness * 0.5)); 
+                block.enemy.hp -= dmg;
+                if(block.enemy.hp <= 0) this.killEnemy(block);
+            }
+            killEnemy(block) {
+                this.gold += (block.gridY * 2) + 10;
+                block.enemy = null;
+                this.updateUI();
+            }
+            mineBlock(block) {
+                block.hp -= 5 * this.levels.pick;
+                
+                if(block.gridY > this.depth) { 
+                    this.depth = block.gridY; 
+                    document.getElementById('ui-depth').innerText = this.depth; 
+                }
+
+                if(block.hp <= 0) this.collectBlock(block);
+            }
+            
+            collectBlock(block) {
+                if(!this.inventory[block.mat.id]) this.inventory[block.mat.id] = 0;
+                this.inventory[block.mat.id]++;
+                
+                if (block.gridY === this.maxDepthUnlocked) {
+                    this.maxDepthUnlocked++;
+                }
+
+                this.blocks = this.blocks.filter(b => b !== block);
+
+                if (this.rowsGenerated <= this.depth + 10) {
+                    this.generateRow();
+                }
+
+                this.updateUI();
+            }
+
+            // --- PROJECTILE LOGIC ---
+            updateProjectiles() {
+                const newProjectiles = [];
+                const PROJECTILE_SPEED = 0.05; // Grid units per frame
+
+                this.projectiles.forEach(p => {
+                    const dx = p.targetX - p.x;
+                    const dy = p.targetY - p.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    // If distance is zero or negligible, handle impact immediately (shouldn't happen often)
+                    if (distance < PROJECTILE_SPEED * 2) {
+                        if (p.targetX === this.cursor.gridX && p.targetY === this.cursor.gridY) {
+                            this.hp -= p.damage;
+                            this.log(`${p.icon} hit you for ${p.damage} dmg!`);
+                            this.canvas.style.transform = "translate(2px, 2px)";
+                            setTimeout(() => this.canvas.style.transform = "none", 100);
+                            this.updateUI();
+                        }
+                        return; // Projectile disappears
+                    }
+
+                    // Calculate movement
+                    const moveX = (dx / distance) * PROJECTILE_SPEED;
+                    const moveY = (dy / distance) * PROJECTILE_SPEED;
+                    
+                    p.x += moveX;
+                    p.y += moveY;
+
+                    // --- Collision Check (Wall check at new position) ---
+                    const currentGridX = Math.floor(p.x + 0.5); // Check center of block
+                    const currentGridY = Math.floor(p.y + 0.5);
+                    
+                    const blockHit = this.blocks.find(b => 
+                        b.gridX === currentGridX && b.gridY === currentGridY
+                    );
+                    
+                    // Did it hit a solid block?
+                    if (blockHit) {
+                         // Stop if the block hit is NOT the player's target block (i.e., hit a wall in between)
+                         if (currentGridX !== p.targetX || currentGridY !== p.targetY) {
+                            this.log("Shot hit a block!");
+                            return; 
+                         }
+                    }
+
+                    newProjectiles.push(p);
+                });
+
+                this.projectiles = newProjectiles;
+            }
+
+            enemyTurn() {
+                if(this.mode === 'house') return; 
+                
+                const activeEnemies = this.blocks.filter(b => b.enemy);
+
+                activeEnemies.forEach(b => {
+                    const enemy = b.enemy;
+                    let canAttack = false;
+
+                    if (enemy.role === 'melee') {
+                        if (this.isAdjacentToAir(b.gridX, b.gridY) && 
+                            Math.abs(b.gridX - this.cursor.gridX) <= 1 && 
+                            Math.abs(b.gridY - this.cursor.gridY) <= 1) {
+                            
+                            canAttack = true;
+                        }
+                    } else if (enemy.role === 'ranged') {
+                        const RANGED_RANGE = 5;
+                        const dist = Math.sqrt(
+                            Math.pow(b.gridX - this.cursor.gridX, 2) + Math.pow(b.gridY - this.cursor.gridY, 2)
+                        );
+                        
+                        if (dist <= RANGED_RANGE && 
+                            this.hasLineOfSight(b.gridX, b.gridY, this.cursor.gridX, this.cursor.gridY)) {
+                            
+                            canAttack = true;
+                        }
+                    }
+                    
+                    if (canAttack) {
+                        const dmg = Math.max(1, enemy.dmg - (this.levels.armor - 1) * 2);
+
+                        if (enemy.role === 'ranged') {
+                            this.projectiles.push({
+                                icon: '—>',
+                                x: b.gridX,
+                                y: b.gridY,
+                                targetX: this.cursor.gridX,
+                                targetY: this.cursor.gridY,
+                                damage: dmg,
+                                speed: 0.05 // Grid units per frame
+                            });
+                        } else {
+                            // Melee attacks hit instantly
+                            this.hp -= dmg;
+                            this.log(`${enemy.icon} attacked you for ${dmg} dmg!`);
+                            this.canvas.style.transform = "translate(2px, 2px)";
+                            setTimeout(() => this.canvas.style.transform = "none", 100);
+                        }
+                    }
+                });
+                
+                if(this.hp <= 0) { 
+                    this.hp = this.maxHp; 
+                    this.resetRun(); 
+                    this.log("💀 YOU DIED! Resetting to surface.");
+                }
+                this.updateUI();
+            }
+
+            // --- UI AND MODE LOGIC (Mostly unchanged) ---
+
+            toggleMode() {
+                this.mode = this.mode === 'mine' ? 'house' : 'mine';
+                const btn = document.querySelector('.toggle-btn');
+                const houseUI = document.getElementById('house-ui');
+                const shopBuild = document.getElementById('shop-build');
+                const shopMine = document.getElementById('shop-mine');
+
+                if (this.mode === 'house') {
+                    btn.innerText = "⛏️ Go Mine";
+                    houseUI.style.display = 'block';
+                    shopBuild.style.display = 'block';
+                    shopMine.style.display = 'none';
+                    this.log("Entered House Mode.");
+                } else {
+                    btn.innerText = "🏠 Go Home";
+                    houseUI.style.display = 'none';
+                    shopBuild.style.display = 'none';
+                    shopMine.style.display = 'block';
+                    this.log("Back to the mines.");
+                }
+                this.updateUI();
+            }
+
+            handleKey(e) {
+                const key = e.key.toLowerCase();
+                
+                if (key === 'h') this.toggleMode();
+
+                if (this.mode === 'mine') {
+                    if (['arrowup', 'w'].includes(key)) this.moveCursor(0, -1);
+                    else if (['arrowdown', 's'].includes(key)) this.moveCursor(0, 1);
+                    else if (['arrowleft', 'a'].includes(key)) this.moveCursor(-1, 0);
+                    else if (['arrowright', 'd'].includes(key)) this.moveCursor(1, 0);
+                    else if (key === ' ' || key === 'enter') this.attemptInteraction(this.cursor.gridX, this.cursor.gridY);
+                    else if (key === 'escape') this.cancelPlacement();
+                    else if (key === 'b') this.startPlacement('bomb', 200);
+                    else if (key === 'n') this.startPlacement('mine', 500);
+                    else if (key === 'x') this.detonateAll();
+                    else if (key === 'c') this.requestSell();
+                }
+                if (key === '1') this.upgrade('pick');
+                else if (key === '2') this.upgrade('sword');
+                else if (key === '3') this.upgrade('armor');
+                else if (key === '4') this.buyPotion();
+            }
+
+            handleMouse(e) {
+                if (this.mode === 'house') {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const blockSize = 40; 
+                    const gridX = Math.floor((e.clientX - rect.left) / blockSize);
+                    const gridY = Math.floor((e.clientY - rect.top) / blockSize);
+                    this.placeHouseBlock(gridX, gridY);
+                    return;
+                }
+                
+                const rect = this.canvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+
+                const blockXIndexInView = Math.floor(clickX / this.blockRenderSize);
+                const blockYIndexInView = Math.floor(clickY / this.blockRenderSize);
+
+                const VIEW_OFFSET = (CONFIG.VIEWPORT_GRID_SIZE - 1) / 2;
+                const gridX = this.cursor.gridX + (blockXIndexInView - VIEW_OFFSET);
+                const gridY = this.cursor.gridY + (blockYIndexInView - VIEW_OFFSET);
+                
+                if (gridX >= 0 && gridX < CONFIG.cols && gridY >= 0 && gridY < this.rowsGenerated) {
+                    this.cursor.gridX = gridX;
+                    this.cursor.gridY = gridY;
+                    this.attemptInteraction(gridX, gridY);
+                }
+            }
+
+            // --- HOVER LOGIC ---
+            handleHover(e) {
+                if (this.mode !== 'mine') return;
+                const rect = this.canvas.getBoundingClientRect();
+                const clickX = e.clientX - rect.left;
+                const clickY = e.clientY - rect.top;
+
+                const blockXIndexInView = Math.floor(clickX / this.blockRenderSize);
+                const blockYIndexInView = Math.floor(clickY / this.blockRenderSize);
+
+                const VIEW_OFFSET = (CONFIG.VIEWPORT_GRID_SIZE - 1) / 2;
+                const gridX = this.cursor.gridX + (blockXIndexInView - VIEW_OFFSET);
+                const gridY = this.cursor.gridY + (blockYIndexInView - VIEW_OFFSET);
+
+                const block = this.blocks.find(b => b.gridX === gridX && b.gridY === gridY);
+                const el = document.getElementById('ui-hover-info');
+
+                if (block && this.isBlockVisible(block) && this.isBlockAccessible(block)) {
+                    if (block.enemy) {
+                        el.innerText = `Enemy: ${block.enemy.icon} (${block.enemy.role.toUpperCase()} HP: ${Math.ceil(block.enemy.hp)})`;
+                        el.style.color = "#e74c3c";
+                    } else {
+                        el.innerText = `Block: ${block.mat.name} (HP: ${Math.ceil(block.hp)})`;
+                        el.style.color = block.mat.color;
+                    }
+                } else if (block && this.isBlockVisible(block) && !this.isBlockAccessible(block)) {
+                    el.innerText = `Block: Obstructed (Path Blocked)`;
+                    el.style.color = "#aaa";
+                } else {
+                    el.innerText = "Block: -";
+                    el.style.color = "#ecf0f1";
+                }
+            }
+            
+            // --- RENDER LOGIC ---
+
+            render() {
+                if (this.mode === 'mine') {
+                    this.ctx.fillStyle = CONFIG.colors.bg;
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                    const RENDER_GRID_SIZE = CONFIG.VIEWPORT_GRID_SIZE;
+                    const BLOCK_SIZE = this.blockRenderSize;
+                    const VIEW_OFFSET = (RENDER_GRID_SIZE - 1) / 2;
+
+                    this.ctx.save();
+                    
+                    for (let vx = 0; vx < RENDER_GRID_SIZE; vx++) {
+                        for (let vy = 0; vy < RENDER_GRID_SIZE; vy++) {
+                            
+                            const gridX = this.cursor.gridX + (vx - VIEW_OFFSET);
+                            const gridY = this.cursor.gridY + (vy - VIEW_OFFSET);
+
+                            const x = vx * BLOCK_SIZE;
+                            const y = vy * BLOCK_SIZE;
+
+                            const block = this.blocks.find(b => b.gridX === gridX && b.gridY === gridY);
+                            
+                            if (gridX >= 0 && gridX < CONFIG.cols && gridY >= 0 && gridY < this.rowsGenerated) {
+                                
+                                if (block) { 
+                                    const isRevealed = this.isBlockVisible(block);
+                                    const isAccessible = this.isBlockAccessible(block);
+
+                                    if (isRevealed) {
+                                        if (isAccessible) {
+                                            this.ctx.fillStyle = block.mat.color;
+                                        } else {
+                                            this.ctx.fillStyle = CONFIG.colors.obstructed; 
+                                        }
+                                        
+                                        this.ctx.fillRect(x, y, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+
+                                        if (isAccessible) {
+                                            const hpPct = block.hp / block.maxHp;
+                                            if (hpPct < 1) {
+                                                this.ctx.fillStyle = "rgba(0,0,0,0.3)";
+                                                this.ctx.fillRect(x, y, BLOCK_SIZE - 2, (BLOCK_SIZE - 2) * (1-hpPct));
+                                            }
+                                            if (block.enemy) {
+                                                this.ctx.font = `${BLOCK_SIZE * 0.6}px Arial`;
+                                                this.ctx.fillStyle = "white";
+                                                this.ctx.textAlign = "center";
+                                                this.ctx.textBaseline = "middle";
+                                                this.ctx.fillText(block.enemy.icon, x + BLOCK_SIZE/2, y + BLOCK_SIZE/2);
+                                            }
+                                        }
+                                    } else {
+                                        this.ctx.fillStyle = CONFIG.colors.unseen; 
+                                        this.ctx.fillRect(x, y, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                                    }
+                                } else {
+                                    this.ctx.fillStyle = CONFIG.colors.unseen;
+                                    this.ctx.fillRect(x, y, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                                }
+                            } else {
+                                this.ctx.fillStyle = CONFIG.colors.unseen;
+                                this.ctx.fillRect(x, y, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                            }
+                            
+                            const explosive = this.explosives.find(e => e.gridX === gridX && e.gridY === gridY);
+                            if (explosive) {
+                                this.ctx.font = `${BLOCK_SIZE * 0.7}px Arial`;
+                                this.ctx.textAlign = "center";
+                                this.ctx.textBaseline = "middle";
+                                this.ctx.fillText(explosive.type==='bomb'?"💣":"🧨", x + BLOCK_SIZE/2, y + BLOCK_SIZE/2);
+                            }
+                        }
+                    }
+
+                    // Draw Projectiles (NEW)
+                    this.projectiles.forEach(p => {
+                        // Calculate position relative to the cursor's center view
+                        const drawX = (p.x - this.cursor.gridX) * BLOCK_SIZE + (VIEW_OFFSET * BLOCK_SIZE);
+                        const drawY = (p.y - this.cursor.gridY) * BLOCK_SIZE + (VIEW_OFFSET * BLOCK_SIZE);
+                        
+                        // Draw only if it's currently visible within the 3x3 view
+                        if (drawX > -BLOCK_SIZE && drawX < this.canvas.width &&
+                            drawY > -BLOCK_SIZE && drawY < this.canvas.height) {
+
+                            this.ctx.fillStyle = "yellow"; // Projectile color
+                            this.ctx.beginPath();
+                            this.ctx.arc(drawX + BLOCK_SIZE / 2, drawY + BLOCK_SIZE / 2, 4, 0, Math.PI * 2);
+                            this.ctx.fill();
+                        }
+                    });
+
+                    // Draw Cursor exactly in the center
+                    const cx = VIEW_OFFSET * BLOCK_SIZE;
+                    const cy = VIEW_OFFSET * BLOCK_SIZE;
+                    
+                    const blockUnderCursor = this.blocks.find(b => b.gridX === this.cursor.gridX && b.gridY === this.cursor.gridY);
+                    const isCursorOnAir = !blockUnderCursor;
+                    
+                    if (isCursorOnAir || (blockUnderCursor && this.isBlockAccessible(blockUnderCursor))) { 
+                        this.ctx.strokeStyle = "white"; this.ctx.lineWidth = 4;
+                        this.ctx.strokeRect(cx, cy, BLOCK_SIZE - 2, BLOCK_SIZE - 2);
+                    }
+
+                    this.ctx.restore(); 
+                } 
+                else if (this.mode === 'house') {
+                    this.ctx.fillStyle = CONFIG.colors.sky;
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    this.ctx.fillStyle = CONFIG.colors.grass;
+                    this.ctx.fillRect(0, 400, this.canvas.width, this.canvas.height);
+
+                    const bs = 40;
+                    this.houseBlocks.forEach(b => {
+                        const mat = MATERIALS.find(m => m.id === b.matId);
+                        this.ctx.fillStyle = mat ? mat.color : '#f0f';
+                        if(b.matId === 'grass') this.ctx.fillStyle = CONFIG.colors.grass;
+                        this.ctx.fillRect(b.x * bs, b.y * bs, bs, bs);
+                        this.ctx.strokeStyle = "rgba(0,0,0,0.1)";
+                        this.ctx.strokeRect(b.x * bs, b.y * bs, bs, bs);
+                    });
+                }
+            }
+
+            // --- ALL OTHER GAME LOGIC (Rest of class methods) ---
+
+            // ... (methods kept for completeness, no logic change needed for the user's latest request outside of projectile/enemyTurn/render) ...
+            
+            handleRightClick(e) {
+                if (this.mode === 'house') {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const clickX = e.clientX - rect.left;
+                    const clickY = e.clientY - rect.top;
+                    const blockSize = 40;
+                    const gridX = Math.floor(clickX / blockSize);
+                    const gridY = Math.floor(clickY / blockSize);
+                    
+                    const idx = this.houseBlocks.findIndex(b => b.x === gridX && b.y === gridY);
+                    if (idx !== -1) {
+                        const b = this.houseBlocks[idx];
+                        if (b.matId !== 'grass') {
+                            if(!this.inventory[b.matId]) this.inventory[b.matId] = 0;
+                            this.inventory[b.matId]++;
+                        }
+                        this.houseBlocks.splice(idx, 1);
+                        this.updateUI();
+                    }
+                }
+            }
+
+            // --- SMELTING LOGIC ---
+            startSmelt(type) {
+                if (this.smeltState.active) {
+                    this.log("Furnace is busy!");
+                    return;
+                }
+                if (!this.inventory[type] || this.inventory[type] < 10) {
+                    this.log(`Need 10 ${type} to burn!`);
+                    return;
+                }
+                
+                this.inventory[type] -= 10;
+                this.smeltState.active = true;
+                this.smeltState.start = Date.now();
+                this.smeltState.type = type;
+                
+                document.getElementById('furnace-status').innerText = `Burning ${type}...`;
+                this.updateUI();
+            }
+
+            buyArtifact(type) {
+                const costs = { sharpness: 5, hardhat: 5, boots: 10 };
+                const cost = costs[type];
+                
+                if(this.fireGems >= cost) {
+                    this.fireGems -= cost;
+                    this.artifacts[type]++;
+                    
+                    if (type === 'hardhat') {
+                        this.maxHp += 50;
+                        this.hp += 50;
+                    }
+                    this.log(`Bought Artifact!`);
+                    this.updateUI();
+                } else {
+                    this.log("Need more Fire Gems!");
+                }
+            }
+
+            // --- MAIN LOOP INTEGRATION ---
+            loop() {
+                // Smelt Logic
+                if (this.smeltState.active) {
+                    const elapsed = Date.now() - this.smeltState.start;
+                    const pct = Math.min(100, (elapsed / this.smeltState.duration) * 100);
+                    document.getElementById('furnace-progress').style.width = pct + '%';
+
+                    if (elapsed >= this.smeltState.duration) {
+                        this.smeltState.active = false;
+                        this.fireGems++;
+                        document.getElementById('furnace-status').innerText = "Done! Gem Created.";
+                        this.log("Furnace finished! +1 Fire Gem");
+                        this.updateUI();
+                    }
+                }
+
+                this.updateProjectiles(); // NEW: Move and check projectile collisions
+                this.render();
+                requestAnimationFrame(this.loop);
+            }
+
+            moveCursor(dx, dy) {
+                const newX = this.cursor.gridX + dx;
+                const newY = this.cursor.gridY + dy;
+
+                if (newX < 0 || newX >= CONFIG.cols || newY < 0 || newY >= this.rowsGenerated) {
+                    return;
+                }
+                
+                const targetBlock = this.blocks.find(b => b.gridX === newX && b.gridY === newY);
+                const isTargetSolid = !!targetBlock;
+                const isTargetAccessible = isTargetSolid ? this.isBlockAccessible(targetBlock) : this.isAdjacentToAir(newX, newY);
+                
+                if (isTargetSolid && !isTargetAccessible) {
+                    this.log("Cannot move cursor onto a solid block that isn't connected to your tunnel.");
+                    return;
+                }
+                
+                if (!isTargetSolid && !isTargetAccessible) {
+                    this.log("Cannot move to that empty space, it's not adjacent to the current tunnel.");
+                    return;
+                }
+                
+                this.cursor.gridX = newX;
+                this.cursor.gridY = newY;
+            }
+
+            placeHouseBlock(x, y) {
+                if (!this.selectedMaterial) { this.log("Select a material!"); return; }
+                if (!this.inventory[this.selectedMaterial] || this.inventory[this.selectedMaterial] <= 0) { this.log(`Out of ${this.selectedMaterial}!`); return; }
+                const existing = this.houseBlocks.find(b => b.x === x && b.y === y);
+                if (existing) return;
+                this.houseBlocks.push({x: x, y: y, matId: this.selectedMaterial});
+                this.inventory[this.selectedMaterial]--;
+                this.updateUI();
+            }
+
+            selectMaterial(matId) {
+                this.selectedMaterial = matId;
+                this.updateUI(); 
+            }
+
+            buyMaterial(matId, cost, amount) {
+                if (this.gold >= cost) {
+                    this.gold -= cost;
+                    if (!this.inventory[matId]) this.inventory[matId] = 0;
+                    this.inventory[matId] += amount;
+                    this.log(`Bought ${amount} ${matId}!`);
+                    this.updateUI();
+                } else {
+                    this.log("Not enough gold!");
+                }
+            }
+
+            attemptInteraction(gridX, gridY) {
+                if (this.placementMode) {
+                    if (this.gold >= this.placementCost) {
+                        this.gold -= this.placementCost;
+                        this.explosives.push({ gridX, gridY, type: this.placementMode });
+                        this.log(`${this.placementMode} placed!`);
+                        this.cancelPlacement();
+                        this.updateUI();
+                    }
+                    return;
+                }
+                const block = this.blocks.find(b => b.gridX === gridX && b.gridY === gridY);
+                
+                if (block) {
+                    if (!this.isBlockAccessible(block)) {
+                        this.log("You must be adjacent to a cleared space to interact with this block.");
+                        return;
+                    }
+                    
+                    if (block.enemy) this.attackEnemy(block);
+                    else this.mineBlock(block);
+                }
+            }
+
+            cancelPlacement() {
+                this.placementMode = null;
+                document.getElementById('mode-indicator').style.display = 'none';
+            }
+
+            startPlacement(type, cost) {
+                if(this.gold >= cost) {
+                    this.placementMode = type;
+                    this.placementCost = cost;
+                    document.getElementById('mode-indicator').style.display = 'block';
+                    this.log(`Select location...`);
+                } else this.log("Not enough Gold!");
+            }
+
+            detonateAll() {
+                if(this.explosives.length === 0) return;
+                this.explosives.forEach(bomb => {
+                    const radius = bomb.type === 'mine' ? 2 : 1;
+                    const dmg = bomb.type === 'mine' ? 500 : 100;
+                    this.blocks.forEach(b => {
+                        if(Math.abs(b.gridX - bomb.gridX) <= radius && Math.abs(b.gridY - bomb.gridY) <= radius) {
+                            if(b.enemy) { b.enemy.hp -= dmg; if(b.enemy.hp<=0) this.killEnemy(b); }
+                            else { b.hp -= dmg; if(b.hp<=0) this.collectBlock(b); }
+                        }
+                    });
+                });
+                this.explosives = [];
+                this.ctx.fillStyle="white"; this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height);
+            }
+            
+            resetRun() {
+                this.cursor = { gridX: 3, gridY: 0 }; 
+                this.blocks = []; 
+                this.explosives = []; 
+                this.projectiles = []; // Clear projectiles on reset
+                this.rowsGenerated = 0; 
+                this.depth = 0; 
+                this.maxDepthUnlocked = 0;
+                this.initWorld();
+                this.updateUI();
+            }
+
+            requestSell() {
+                let total = 0;
+                let listStr = "";
+                let hasItems = false;
+
+                MATERIALS.forEach(m => {
+                    if (m.type === 'ore' && this.inventory[m.id]) {
+                        const count = this.inventory[m.id];
+                        if(count > 0) {
+                            total += count * m.val;
+                            listStr += `${m.name}: ${count}, `;
+                            hasItems = true;
+                        }
+                    }
+                });
+
+                if (!hasItems) {
+                    this.log("Nothing to sell.");
+                    return;
+                }
+                
+                listStr = listStr.slice(0, -2);
+                this.pendingSaleTotal = total;
+
+                document.getElementById('modal-msg').innerText = `Are you sure to want to sell all the ores: ${listStr}`;
+                document.getElementById('custom-modal').style.display = 'flex';
+            }
+
+            closeModal() {
+                document.getElementById('custom-modal').style.display = 'none';
+            }
+
+            confirmSell() {
+                this.closeModal();
+                
+                MATERIALS.forEach(m => {
+                    if (m.type === 'ore' && this.inventory[m.id]) {
+                        this.inventory[m.id] = 0;
+                    }
+                });
+                
+                this.gold += this.pendingSaleTotal;
+                this.log(`Sold ores for $${this.pendingSaleTotal}`);
+                this.pendingSaleTotal = 0;
+                this.updateUI();
+            }
+
+            upgrade(t) {
+                if(this.gold >= this.costs[t]) {
+                    this.gold -= this.costs[t];
+                    this.levels[t]++;
+                    this.costs[t] = Math.floor(this.costs[t]*1.8);
+                    if(t==='armor') { this.maxHp += 20; this.hp += 20; }
+                    this.updateUI();
+                }
+            }
+            buyPotion() { if(this.gold>=50) { this.gold-=50; this.hp=Math.min(this.hp+50, this.maxHp); this.updateUI(); } }
+
+            buyArtifact(type) {
+                const costs = { sharpness: 5, hardhat: 5, boots: 10 };
+                const cost = costs[type];
+                
+                if(this.fireGems >= cost) {
+                    this.fireGems -= cost;
+                    this.artifacts[type]++;
+                    
+                    if (type === 'hardhat') {
+                        this.maxHp += 50;
+                        this.hp += 50;
+                    }
+                    this.log(`Bought Artifact!`);
+                    this.updateUI();
+                } else {
+                    this.log("Need more Fire Gems!");
+                }
+            }
+
+            updateUI() {
+                document.getElementById('ui-gold').innerText = this.gold;
+                document.getElementById('ui-gems').innerText = this.fireGems;
+                document.getElementById('ui-hp').innerText = Math.floor(this.hp)+"/"+this.maxHp;
+                ['pick','sword','armor'].forEach(t => {
+                    document.getElementById('ui-'+t).innerText = this.levels[t];
+                    document.getElementById('cost-'+t).innerText = this.costs[t];
+                });
+
+                const list = document.getElementById('materials-list');
+                list.innerHTML = '';
+                
+                Object.keys(this.inventory).forEach(key => {
+                    const count = this.inventory[key];
+                    if (count > 0) {
+                        const mat = MATERIALS.find(m => m.id === key);
+                        const color = mat ? mat.color : '#ccc';
+                        const name = mat ? mat.name : key;
+                        const div = document.createElement('div');
+                        div.className = `mat-item ${this.selectedMaterial === key ? 'selected' : ''}`;
+                        div.style.borderLeft = `4px solid ${color}`;
+                        div.innerText = `${name}: ${count}`;
+                        div.onclick = () => this.selectMaterial(key);
+                        list.appendChild(div);
+                    }
+                });
+            }
+
+            log(msg) {
+                const l = document.getElementById('game-log');
+                l.innerHTML = `> ${msg}<br>` + l.innerHTML;
+            }
+        }
+
+        const game = new Game();
+    </script>
+</body>
 </html>
